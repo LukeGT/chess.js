@@ -177,6 +177,8 @@ const Ox88: Record<Square, number> = {
   a1: 112, b1: 113, c1: 114, d1: 115, e1: 116, f1: 117, g1: 118, h1: 119
 }
 
+const DIFF_TO_INDEX = Ox88.h1 - Ox88.a8
+
 const PAWN_OFFSETS = {
   b: [16, 32, 17, 15],
   w: [-16, -32, -17, -15],
@@ -907,63 +909,76 @@ export class Chess {
   }
 
   private _attacked(color: Color, square: number) {
-    for (let i = Ox88.a8; i <= Ox88.h1; i++) {
-      // did we run off the end of the board
-      if (i & 0x88) {
-        i += 7
-        continue
-      }
-
-      // if empty square or wrong color
-      if (this._board[i] === undefined || this._board[i].color !== color) {
-        continue
-      }
-
-      const piece = this._board[i]
-      const difference = i - square
-
-      // skip - to/from square are the same
-      if (difference === 0) {
-        continue
-      }
-
-      const index = difference + 119
-
-      if (ATTACKS[index] & PIECE_MASKS[piece.type]) {
-        if (piece.type === PAWN) {
-          if (difference > 0) {
-            if (piece.color === WHITE) return true
-          } else {
-            if (piece.color === BLACK) return true
-          }
-          continue
-        }
-
-        // if the piece is a knight or a king
-        if (piece.type === 'n' || piece.type === 'k') return true
-
-        const offset = RAYS[index]
-        let j = i + offset
-
-        let blocked = false
-        while (j !== square) {
-          if (this._board[j] != null) {
-            blocked = true
-            break
-          }
-          j += offset
-        }
-
-        if (!blocked) return true
-      }
+    for (const attacker of this._getAttackers(square)) {
+      if (attacker.color === color) return true
     }
-
     return false
   }
 
   private _isKingAttacked(color: Color) {
     const square = this._kings[color]
     return square === -1 ? false : this._attacked(swapColor(color), square)
+  }
+
+  private *_squares() {
+    for (let i = Ox88.a8; i <= Ox88.h1; i++) {
+      // did we run off the end of the board
+      if (i & 0x88) {
+        i += 7
+        continue
+      }
+      yield i
+    }
+  }
+
+  private *_midSquares(from: number, to: number) {
+    const difference = from - to
+    const offset = RAYS[difference + DIFF_TO_INDEX]
+
+    for (let mid = from; mid !== to; mid += offset) {
+      yield mid
+    }
+  }
+
+  *_getAttackers(victim: number) {
+    for (const attacker of this._squares()) {
+      const piece = this._board[attacker]
+      if (piece === undefined) continue
+
+      const difference = attacker - victim
+      if (difference === 0) continue
+
+      const index = difference + DIFF_TO_INDEX
+      if (!(ATTACKS[index] & PIECE_MASKS[piece.type])) continue
+
+      if (piece.type === PAWN) {
+        if (difference > 0) {
+          if (piece.color === BLACK) continue
+        } else {
+          if (piece.color === WHITE) continue
+        }
+      } else if ([BISHOP, ROOK, QUEEN].includes(piece.type)) {
+        let blocked = false
+        for (const mid of this._midSquares(attacker, victim)) {
+          if (mid === attacker) continue
+          if (this._board[mid] !== undefined) {
+            blocked = true
+            break
+          }
+        }
+        if (blocked) continue
+      }
+
+      yield {
+        square: algebraic(attacker),
+        color: piece.color,
+        type: piece.type,
+      }
+    }
+  }
+
+  *getAttackers(square: Square) {
+    yield* this._getAttackers(Ox88[square])
   }
 
   isAttacked(square: Square, attackedBy: Color) {
