@@ -909,8 +909,8 @@ export class Chess {
   }
 
   private _attacked(color: Color, square: number) {
-    for (const attacker of this._getAttackers(square)) {
-      if (attacker.color === color) return true
+    for (const attack of this._getAttacks(square)) {
+      if (attack.attacker.piece.color === color) return true
     }
     return false
   }
@@ -940,7 +940,16 @@ export class Chess {
     }
   }
 
-  *_getAttackers(victim: number) {
+  private _getPieceInfo(square: number) {
+    const piece = this._board[square];
+    if (piece) {
+      return { piece, square: algebraic(square) }
+    } else {
+      return null;
+    }
+  }
+
+  *_getAttacks(victim: number) {
     for (const attacker of this._squares()) {
       const piece = this._board[attacker]
       if (piece === undefined) continue
@@ -970,15 +979,57 @@ export class Chess {
       }
 
       yield {
-        square: algebraic(attacker),
-        color: piece.color,
-        type: piece.type,
+        attacker: this._getPieceInfo(attacker)!,
+        victim: this._getPieceInfo(victim),
+      }
+    }
+  }
+
+  *_getPins(attacker: number) {
+    const attacker_piece = this._board[attacker];
+    if (![BISHOP, ROOK, QUEEN].includes(attacker_piece.type)) return;
+
+    for (const pivot of this._squares()) {
+      const pivot_piece = this._board[pivot]
+      if (
+        pivot_piece === undefined ||
+        pivot_piece.color === attacker_piece.color
+      )
+        continue
+
+      const difference = attacker - pivot
+      if (difference === 0) continue
+
+      const index = difference + DIFF_TO_INDEX
+      if (!(ATTACKS[index] & PIECE_MASKS[ROOK])) continue
+
+      let pinned: number | null = null
+      let clear = true;
+      for (const mid of this._midSquares(attacker, pivot)) {
+        if (mid === attacker) continue
+
+        const piece = this._board[mid];
+        if (piece !== undefined && piece.color !== attacker_piece.color) {
+          if (pinned === null) {
+            pinned = mid
+          } else {
+            clear = false
+            break
+          }
+        }
+      }
+      if (pinned === null || !clear) continue;
+
+      yield {
+        attacker: this._getPieceInfo(attacker)!,
+        pivot: this._getPieceInfo(pivot)!,
+        pinned: this._getPieceInfo(pinned)!,
       }
     }
   }
 
   *getAttackers(square: Square) {
-    yield* this._getAttackers(Ox88[square])
+    yield* this._getAttacks(Ox88[square])
   }
 
   isAttacked(square: Square, attackedBy: Color) {
