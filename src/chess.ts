@@ -989,6 +989,7 @@ export class Chess {
     const attacker_piece = this._board[attacker];
     if (![BISHOP, ROOK, QUEEN].includes(attacker_piece.type)) return;
 
+    // TODO: Use PIECE_OFFSETS instead of brute forcing all squares
     for (const pivot of this._squares()) {
       const pivot_piece = this._board[pivot]
       if (
