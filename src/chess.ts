@@ -1008,8 +1008,14 @@ export class Chess {
     }
   }
 
-  *getAttackersAndPins(square: Square): Generator<AttackWithPins> {
+  *getAttacksAndPins(square: Square): Generator<AttackWithPins> {
     yield* this._getAttacks(Ox88[square])
+  }
+
+  *getAllAttacksAndPins(): Generator<AttackWithPins> {
+    for (const square of this._squares()) {
+      yield* this._getAttacks(square)
+    }
   }
 
   *getAttackers(square: Square): Generator<Attack> {
