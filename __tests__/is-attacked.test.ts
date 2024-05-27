@@ -166,3 +166,12 @@ test('isAttacked (doc tests)', () => {
   chess.load('4k3/4n3/8/8/8/8/4R3/4K3 w - - 0 1')
   expect(chess.isAttacked('c6', BLACK)).toBe(true)
 })
+
+test('attacksAndPins (opening)', () => {
+  const chess = new Chess()
+  const by_attacker = Map.groupBy(
+    chess.getAllAttacksAndPins(),
+    (attack) => attack.attacker.square,
+  )
+  // TODO: Actually test the output
+})
