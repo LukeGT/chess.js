@@ -962,9 +962,13 @@ export class Chess {
   }
 
   private _getPiecesBetween(from: number, to: number): PieceInfo[] {
-    return [...this._midSquares(from, to)]
-      .map((mid) => this._getPieceInfo(mid))
-      .filter((info) => info !== null) as PieceInfo[]
+    const pieces: PieceInfo[] = [];
+    for (const square of this._midSquares(from, to)) {
+      const info = this._getPieceInfo(square);
+      if (info === null) continue;
+      pieces.push(info);
+    }
+    return pieces;
   }
 
   private _isAttacking(attacker: number, victim: number): boolean {
