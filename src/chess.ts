@@ -935,7 +935,7 @@ export class Chess {
     const difference = from - to
     const offset = RAYS[difference + DIFF_TO_INDEX]
 
-    for (let mid = from; mid !== to; mid += offset) {
+    for (let mid = from + offset; mid !== to; mid += offset) {
       yield mid
     }
   }
@@ -969,7 +969,6 @@ export class Chess {
       } else if ([BISHOP, ROOK, QUEEN].includes(piece.type)) {
         let blocked = false
         for (const mid of this._midSquares(attacker, victim)) {
-          if (mid === attacker) continue
           if (this._board[mid] !== undefined) {
             blocked = true
             break
@@ -1007,8 +1006,6 @@ export class Chess {
       let pinned: number | null = null
       let clear = true;
       for (const mid of this._midSquares(attacker, pivot)) {
-        if (mid === attacker) continue
-
         const piece = this._board[mid];
         if (piece !== undefined && piece.color !== attacker_piece.color) {
           if (pinned === null) {
