@@ -4,5 +4,6 @@
     "outDir": "./dist/types",
     "declaration": true,
     "emitDeclarationOnly": true
-  }
+  },
+  "exclude": ["__tests__/**/*"],
 }
