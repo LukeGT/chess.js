@@ -99,6 +99,9 @@ interface PieceInfo {
 interface Attack {
   attacker: PieceInfo
   victim: PieceInfo | null
+}
+
+interface AttackWithPins extends Attack {
   between: PieceInfo[]
 }
 
@@ -985,7 +988,7 @@ export class Chess {
     return true
   }
 
-  *_getAttacks(victim: number): Generator<Attack> {
+  *_getAttacks(victim: number): Generator<AttackWithPins> {
     for (const attacker of this._squares()) {
       if (!this._isAttacking(attacker, victim)) continue
 
@@ -1001,10 +1004,17 @@ export class Chess {
     }
   }
 
-  *getAttackers(square: Square) {
-    for (const attacker of this._getAttacks(Ox88[square])) {
-      if (attacker.between.length === 0) {
-        yield attacker
+  *getAttackersAndPins(square: Square): Generator<AttackWithPins> {
+    yield* this._getAttacks(Ox88[square])
+  }
+
+  *getAttackers(square: Square): Generator<Attack> {
+    for (const attack of this._getAttacks(Ox88[square])) {
+      if (attack.between.length === 0) {
+        yield {
+          attacker: attack.attacker,
+          victim: attack.victim,
+        }
       }
     }
   }
