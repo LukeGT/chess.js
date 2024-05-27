@@ -91,6 +91,17 @@ export type Move = {
   after: string
 }
 
+interface PieceInfo {
+  piece: Piece
+  square: string
+}
+
+interface Attack {
+  attacker: PieceInfo
+  victim: PieceInfo | null
+  between: PieceInfo[]
+}
+
 const EMPTY = -1
 
 const FLAGS: Record<string, string> = {
@@ -910,7 +921,8 @@ export class Chess {
 
   private _attacked(color: Color, square: number) {
     for (const attack of this._getAttacks(square)) {
-      if (attack.attacker.piece.color === color) return true
+      if (attack.attacker.piece.color === color && attack.between.length === 0)
+        return true
     }
     return false
   }
@@ -940,94 +952,61 @@ export class Chess {
     }
   }
 
-  private _getPieceInfo(square: number) {
-    const piece = this._board[square];
-    if (piece) {
-      return { piece, square: algebraic(square) }
-    } else {
-      return null;
-    }
+  private _getPieceInfo(square: number): PieceInfo | null {
+    const piece = this._board[square]
+    if (!piece) return null
+    return { piece, square: algebraic(square) }
   }
 
-  *_getAttacks(victim: number) {
-    for (const attacker of this._squares()) {
-      const piece = this._board[attacker]
-      if (piece === undefined) continue
+  private _getPiecesBetween(from: number, to: number): PieceInfo[] {
+    return [...this._midSquares(from, to)]
+      .map((mid) => this._getPieceInfo(mid))
+      .filter((info) => info !== null) as PieceInfo[]
+  }
 
-      const difference = attacker - victim
-      if (difference === 0) continue
+  private _isAttacking(attacker: number, victim: number): boolean {
+    const piece = this._board[attacker]
+    if (piece === undefined) return false
 
-      const index = difference + DIFF_TO_INDEX
-      if (!(ATTACKS[index] & PIECE_MASKS[piece.type])) continue
+    const difference = attacker - victim
+    if (difference === 0) return false
 
-      if (piece.type === PAWN) {
-        if (difference > 0) {
-          if (piece.color === BLACK) continue
-        } else {
-          if (piece.color === WHITE) continue
-        }
-      } else if ([BISHOP, ROOK, QUEEN].includes(piece.type)) {
-        let blocked = false
-        for (const mid of this._midSquares(attacker, victim)) {
-          if (this._board[mid] !== undefined) {
-            blocked = true
-            break
-          }
-        }
-        if (blocked) continue
+    const index = difference + DIFF_TO_INDEX
+    if (!(ATTACKS[index] & PIECE_MASKS[piece.type])) return false
+
+    if (piece.type === PAWN) {
+      if (difference > 0) {
+        if (piece.color === BLACK) return false
+      } else {
+        if (piece.color === WHITE) return false
       }
+    }
+
+    return true
+  }
+
+  *_getAttacks(victim: number): Generator<Attack> {
+    for (const attacker of this._squares()) {
+      if (!this._isAttacking(attacker, victim)) continue
+
+      const piece = this._board[attacker]
+      const can_pin = [BISHOP, ROOK, QUEEN].includes(piece.type)
+      const between = can_pin ? this._getPiecesBetween(attacker, victim) : []
 
       yield {
         attacker: this._getPieceInfo(attacker)!,
         victim: this._getPieceInfo(victim),
-      }
-    }
-  }
-
-  *_getPins(attacker: number) {
-    const attacker_piece = this._board[attacker];
-    if (![BISHOP, ROOK, QUEEN].includes(attacker_piece.type)) return;
-
-    // TODO: Use PIECE_OFFSETS instead of brute forcing all squares
-    for (const pivot of this._squares()) {
-      const pivot_piece = this._board[pivot]
-      if (
-        pivot_piece === undefined ||
-        pivot_piece.color === attacker_piece.color
-      )
-        continue
-
-      const difference = attacker - pivot
-      if (difference === 0) continue
-
-      const index = difference + DIFF_TO_INDEX
-      if (!(ATTACKS[index] & PIECE_MASKS[ROOK])) continue
-
-      let pinned: number | null = null
-      let clear = true;
-      for (const mid of this._midSquares(attacker, pivot)) {
-        const piece = this._board[mid];
-        if (piece !== undefined && piece.color !== attacker_piece.color) {
-          if (pinned === null) {
-            pinned = mid
-          } else {
-            clear = false
-            break
-          }
-        }
-      }
-      if (pinned === null || !clear) continue;
-
-      yield {
-        attacker: this._getPieceInfo(attacker)!,
-        pivot: this._getPieceInfo(pivot)!,
-        pinned: this._getPieceInfo(pinned)!,
+        between,
       }
     }
   }
 
   *getAttackers(square: Square) {
-    yield* this._getAttacks(Ox88[square])
+    for (const attacker of this._getAttacks(Ox88[square])) {
+      if (attacker.between.length === 0) {
+        yield attacker
+      }
+    }
   }
 
   isAttacked(square: Square, attackedBy: Color) {
