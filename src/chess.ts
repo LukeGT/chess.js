@@ -91,17 +91,17 @@ export type Move = {
   after: string
 }
 
-interface PieceInfo {
+export interface PieceInfo {
   piece: Piece
   square: string
 }
 
-interface Attack {
+export interface Attack {
   attacker: PieceInfo
   victim: PieceInfo | null
 }
 
-interface AttackWithPins extends Attack {
+export interface AttackWithPins extends Attack {
   between: PieceInfo[]
 }
 

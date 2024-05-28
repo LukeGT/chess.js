@@ -6,6 +6,7 @@ import {
   WHITE,
   BLACK,
   DEFAULT_POSITION,
+  AttackWithPins,
 } from '../src/chess'
 
 function areAttacked(chess: Chess, squares: Square[], color: Color) {
@@ -167,11 +168,143 @@ test('isAttacked (doc tests)', () => {
   expect(chess.isAttacked('c6', BLACK)).toBe(true)
 })
 
-test('attacksAndPins (opening)', () => {
-  const chess = new Chess()
-  const by_attacker = Map.groupBy(
-    chess.getAllAttacksAndPins(),
-    (attack) => attack.attacker.square,
+function get_by_attacker(chess: Chess) {
+  return new Map(
+    [
+      ...Map.groupBy(
+        chess.getAllAttacksAndPins(),
+        (attack) => attack.attacker.square,
+      ),
+    ].map(
+      ([attacker, attacks]): [string, Map<string | null, AttackWithPins[]>] => [
+        attacker,
+        Map.groupBy(attacks, (attack) => attack.victim?.square ?? null),
+      ],
+    ),
   )
-  // TODO: Actually test the output
+}
+
+describe('attacksAndPins (opening)', () => {
+  const chess = new Chess()
+  const by_attacker = get_by_attacker(chess)
+
+  test('queen attacks', () => {
+    expect(by_attacker.get('d1')?.get('d8')?.[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'q' }, square: 'd1' },
+      victim: { piece: { color: 'b', type: 'q' }, square: 'd8' },
+      between: [
+        { piece: { color: 'w', type: 'p' }, square: 'd2' },
+        { piece: { color: 'b', type: 'p' }, square: 'd7' },
+      ],
+    })
+  })
+
+  test('rook attacks', () => {
+    expect(by_attacker.get('a8')?.get('a1')?.[0]).toEqual({
+      attacker: { piece: { color: 'b', type: 'r' }, square: 'a8' },
+      victim: { piece: { color: 'w', type: 'r' }, square: 'a1' },
+      between: [
+        { piece: { color: 'b', type: 'p' }, square: 'a7' },
+        { piece: { color: 'w', type: 'p' }, square: 'a2' },
+      ],
+    })
+  })
+
+  test('king attacks', () => {
+    expect(by_attacker.get('e1')?.get('d2')?.[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'k' }, square: 'e1' },
+      victim: { piece: { color: 'w', type: 'p' }, square: 'd2' },
+      between: [],
+    })
+  })
+
+  test('pawn attacks', () => {
+    expect(by_attacker.get('a2')?.values().next().value[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'p' }, square: 'a2' },
+      victim: null,
+      between: [],
+    })
+  })
+
+  test('knight attacks', () => {
+    expect(by_attacker.get('g1')?.get('e2')?.[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'n' }, square: 'g1' },
+      victim: { piece: { color: 'w', type: 'p' }, square: 'e2' },
+      between: [],
+    })
+  })
+
+  test('bishop attacks', () => {
+    expect(by_attacker.get('f1')?.get('e2')?.[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'b' }, square: 'f1' },
+      victim: { piece: { color: 'w', type: 'p' }, square: 'e2' },
+      between: [],
+    })
+  })
+})
+
+describe('attacksAndPins (position)', () => {
+  const chess = new Chess(
+    'rnbq1rk1/pp2bppp/5n2/3pp1B1/2B5/2NP1N2/PPP2PPP/R2Q1RK1 w - - 0 9',
+  )
+  const by_attacker = get_by_attacker(chess)
+
+  test('queen attacks', () => {
+    expect(by_attacker.get('d8')?.get('g5')?.[0]).toEqual({
+      attacker: { piece: { color: 'b', type: 'q' }, square: 'd8' },
+      victim: { piece: { color: 'w', type: 'b' }, square: 'g5' },
+      between: [
+        { piece: { color: 'b', type: 'b' }, square: 'e7' },
+        { piece: { color: 'b', type: 'n' }, square: 'f6' },
+      ],
+    })
+  })
+
+  test('rook attacks', () => {
+    expect(by_attacker.get('f1')?.get('f8')?.[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'r' }, square: 'f1' },
+      victim: { piece: { color: 'b', type: 'r' }, square: 'f8' },
+      between: [
+        { piece: { color: 'w', type: 'p' }, square: 'f2' },
+        { piece: { color: 'w', type: 'n' }, square: 'f3' },
+        { piece: { color: 'b', type: 'n' }, square: 'f6' },
+        { piece: { color: 'b', type: 'p' }, square: 'f7' },
+      ],
+    })
+  })
+
+  test('king attacks', () => {
+    expect(by_attacker.get('g8')?.get('f8')?.[0]).toEqual({
+      attacker: { piece: { color: 'b', type: 'k' }, square: 'g8' },
+      victim: { piece: { color: 'b', type: 'r' }, square: 'f8' },
+      between: [],
+    })
+  })
+
+  test('pawn attacks', () => {
+    expect(by_attacker.get('d5')?.get('c4')?.[0]).toEqual({
+      attacker: { piece: { color: 'b', type: 'p' }, square: 'd5' },
+      victim: { piece: { color: 'w', type: 'b' }, square: 'c4' },
+      between: [],
+    })
+  })
+
+  test('knight attacks', () => {
+    expect(by_attacker.get('f3')?.get('e5')?.[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'n' }, square: 'f3' },
+      victim: { piece: { color: 'b', type: 'p' }, square: 'e5' },
+      between: [],
+    })
+  })
+
+  test('bishop attacks', () => {
+    expect(by_attacker.get('c4')?.get('g8')?.[0]).toEqual({
+      attacker: { piece: { color: 'w', type: 'b' }, square: 'c4' },
+      victim: { piece: { color: 'b', type: 'k' }, square: 'g8' },
+      between: [
+        { piece: { color: 'b', type: 'p' }, square: 'd5' },
+        { piece: { color: 'b', type: 'p' }, square: 'f7' },
+      ],
+    })
+  })
 })
