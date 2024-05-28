@@ -91,14 +91,18 @@ export type Move = {
   after: string
 }
 
-export interface PieceInfo {
-  piece: Piece
+export interface PartialPieceInfo {
+  piece?: Piece
   square: string
+}
+
+export interface PieceInfo extends PartialPieceInfo {
+  piece: Piece
 }
 
 export interface Attack {
   attacker: PieceInfo
-  victim: PieceInfo | null
+  victim: PartialPieceInfo
 }
 
 export interface AttackWithPins extends Attack {
@@ -1002,7 +1006,7 @@ export class Chess {
 
       yield {
         attacker: this._getPieceInfo(attacker)!,
-        victim: this._getPieceInfo(victim),
+        victim: this._getPieceInfo(victim) ?? { square: algebraic(victim) },
         between,
       }
     }

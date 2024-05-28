@@ -221,7 +221,7 @@ describe('attacksAndPins (opening)', () => {
   test('pawn attacks', () => {
     expect(by_attacker.get('a2')?.values().next().value[0]).toEqual({
       attacker: { piece: { color: 'w', type: 'p' }, square: 'a2' },
-      victim: null,
+      victim: { square: 'b3' },
       between: [],
     })
   })
